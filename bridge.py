@@ -17,20 +17,32 @@ client = discord.Client(intents=intents)
 
 roblox_log = []
 live_message_id = None
+chat_active = False
 
 # ---------------- DISCORD READY ----------------
 @client.event
 async def on_ready():
-    global live_message_id
-
     print(f"Logged in as {client.user}")
 
-    channel = client.get_channel(CHANNEL_ID)
+# ---------------- COMMAND: /rchat ----------------
+@client.event
+async def on_message(message):
+    global live_message_id, chat_active
 
-    msg = await channel.send("🎮 Loading Roblox Live Chat...")
-    live_message_id = msg.id
+    if message.author.bot:
+        return
 
-    print("Live chat box created")
+    # COMMAND TRIGGER
+    if message.content.lower() == "/rchat":
+        chat_active = True
+
+        channel = client.get_channel(CHANNEL_ID)
+
+        msg = await channel.send("🎮 Loading Roblox Chat Session...")
+        live_message_id = msg.id
+
+        await update_discord_message()
+        return
 
 # ---------------- ROBLOX → DISCORD ----------------
 @app.route("/roblox-to-discord", methods=["POST"])
@@ -44,11 +56,13 @@ def roblox_to_discord():
     if len(roblox_log) > 15:
         roblox_log.pop(0)
 
-    asyncio.run_coroutine_threadsafe(update_discord_message(), client.loop)
+    # Only update if /rchat was used
+    if chat_active:
+        asyncio.run_coroutine_threadsafe(update_discord_message(), client.loop)
 
     return "OK", 200
 
-# ---------------- UPDATE DISCORD MESSAGE (EMBED BOX) ----------------
+# ---------------- UPDATE EMBED ----------------
 async def update_discord_message():
     global live_message_id
 
@@ -65,29 +79,29 @@ async def update_discord_message():
         content = "\n".join(roblox_log)
 
         embed = discord.Embed(
-            title="🎮 ROBLOX LIVE CHAT",
+            title="🎮 ROBLOX LIVE CHAT (SESSION)",
             description=content if content else "No messages yet...",
             color=0x00ffcc
         )
 
-        embed.set_footer(text="Live Roblox Bridge")
+        embed.set_footer(text="Type /rchat to load session")
 
         await msg.edit(embed=embed)
 
     except Exception as e:
         print("Update error:", e)
 
-# ---------------- DISCORD → ROBLOX (NOT USED, SAFE PLACEHOLDER) ----------------
+# ---------------- ROBLOX API ----------------
 @app.route("/discord-messages", methods=["GET"])
 def discord_messages():
     return jsonify([])
 
-# ---------------- RUN FLASK ----------------
+# ---------------- FLASK ----------------
 def run_flask():
     port = int(os.environ.get("PORT", 3000))
     app.run(host="0.0.0.0", port=port)
 
 threading.Thread(target=run_flask).start()
 
-# ---------------- RUN DISCORD BOT ----------------
+# ---------------- BOT ----------------
 client.run(TOKEN)
