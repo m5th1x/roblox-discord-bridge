@@ -15,11 +15,8 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
 
-chat_log = []
-live_message_id = None
-
-# ---------------- ROBLOX STORAGE ----------------
 roblox_log = []
+live_message_id = None
 
 # ---------------- DISCORD READY ----------------
 @client.event
@@ -30,19 +27,10 @@ async def on_ready():
 
     channel = client.get_channel(CHANNEL_ID)
 
-    msg = await channel.send("🎮 **ROBLOX LIVE CHAT LOADING...**")
+    msg = await channel.send("🎮 Loading Roblox Live Chat...")
     live_message_id = msg.id
 
     print("Live chat box created")
-
-# ---------------- OPTIONAL: Discord messages (NOT chat injection, just logging) ----------------
-@client.event
-async def on_message(message):
-    if message.author.bot:
-        return
-
-    # We can still log Discord messages if you want later
-    pass
 
 # ---------------- ROBLOX → DISCORD ----------------
 @app.route("/roblox-to-discord", methods=["POST"])
@@ -60,7 +48,7 @@ def roblox_to_discord():
 
     return "OK", 200
 
-# ---------------- UPDATE DISCORD MESSAGE ----------------
+# ---------------- UPDATE DISCORD MESSAGE (EMBED BOX) ----------------
 async def update_discord_message():
     global live_message_id
 
@@ -74,15 +62,22 @@ async def update_discord_message():
     try:
         msg = await channel.fetch_message(live_message_id)
 
-        content = "🎮 **ROBLOX LIVE CHAT**\n\n"
-        content += "\n".join(roblox_log)
+        content = "\n".join(roblox_log)
 
-        await msg.edit(content=content)
+        embed = discord.Embed(
+            title="🎮 ROBLOX LIVE CHAT",
+            description=content if content else "No messages yet...",
+            color=0x00ffcc
+        )
+
+        embed.set_footer(text="Live Roblox Bridge")
+
+        await msg.edit(embed=embed)
 
     except Exception as e:
         print("Update error:", e)
 
-# ---------------- OPTIONAL: Discord → Roblox API ----------------
+# ---------------- DISCORD → ROBLOX (NOT USED, SAFE PLACEHOLDER) ----------------
 @app.route("/discord-messages", methods=["GET"])
 def discord_messages():
     return jsonify([])
